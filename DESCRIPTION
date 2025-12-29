@@ -1,0 +1,37 @@
+Package: rnassqs_helper
+Title: Helper Tools for Simplified Access to USDA NASS Quick Stats
+Version: 0.0.0.9000
+Authors@R: 
+    person(
+        given = "First",
+        family = "Last",
+        email = "you@company.com",
+        role = c("aut", "cre")
+    )
+Description: Provides a streamlined interface for downloading, cleaning, 
+    and managing data from the USDA NASS Quick Stats API. This package 
+    wraps common query patterns, handles pagination, and simplifies 
+    authentication and data retrieval workflows for analysts and 
+    researchers working with agricultural datasets.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
+Depends:
+    R (>= 4.5.1)
+Imports:
+    httr2,
+    jsonlite,
+    dplyr,
+    tidyr,
+    purrr,
+    tibble,
+    stringr,
+    rnassqs
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+LazyData: true
+VignetteBuilder: knitr
