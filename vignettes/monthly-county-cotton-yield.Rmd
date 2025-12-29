@@ -1,0 +1,57 @@
+---
+title: "monthly-county-cotton-yield"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{monthly-county-cotton-yield}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(rnassqs_helper)
+library(rnassqs)
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(tibble)
+
+
+cotton_states <- c(
+  "CALIFORNIA", "ARIZONA", "NEW MEXICO", "OKLAHOMA", "TEXAS",
+  "KANSAS", "LOUISIANA", "MISSOURI", "ARKANSAS", "MISSISSIPPI",
+  "TENNESSEE", "ALABAMA", "FLORIDA", "NORTH CAROLINA", "GEORGIA",
+  "VIRGINIA", "SOUTH CAROLINA"
+)
+
+params <- list(
+  source_desc = "SURVEY",
+  sector_desc = "CROPS",
+  group_desc = "FIELD CROPS",
+  commodity_desc = "COTTON",
+  statisticcat_desc = "YIELD",
+  agg_level_desc = "COUNTY",
+  freq_desc = "MONTHLY",
+  year = 1970:2025,
+  state_name = cotton_states
+)
+
+raw_data <- rnassqs::nassqs(params)
+
+head(raw_data)
+
+cleaned <- raw_data |>
+  dplyr::mutate(across(where(is.character), trimws))
+
+head(cleaned)
+
+```
+
+
+
