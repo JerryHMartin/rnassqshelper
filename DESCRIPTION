@@ -1,22 +1,19 @@
-Package: rnassqs_helper
-Title: Helper Tools for Simplified Access to USDA NASS Quick Stats
-Version: 0.0.0.9000
+Package: rnassqshelper
+Title: Helper Utilities for NASS Quick Stats API
+Version: 0.1.0
 Authors@R: 
-    person(
-        given = "First",
-        family = "Last",
-        email = "you@company.com",
-        role = c("aut", "cre")
-    )
-Description: Provides a streamlined interface for downloading, cleaning, 
-    and managing data from the USDA NASS Quick Stats API. This package 
-    wraps common query patterns, handles pagination, and simplifies 
-    authentication and data retrieval workflows for analysts and 
-    researchers working with agricultural datasets.
+    c(person(given = "Jerry",
+             family = "Martin",
+             role = c("aut", "cre"),
+             email = "jerry.h.martin@usda.gov",
+             comment = c(ORCID = "0000-0002-5098-3581")))
+Description: Convenience functions to query, tidy, and cache data from
+    the USDA NASS Quick Stats API, with helpers for authentication, repeated
+    requests, and robust parsing for environmental data workflows.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.1
+RoxygenNote: 7.3.2
 Depends:
     R (>= 4.5.1)
 Imports:
