@@ -94,36 +94,5 @@ cleaned <- raw_data |>
   normalize_names() |>
   mutate(across(where(is.character), ~trimws(.x)))
 
-# --- Create numeric value (if present) ---
-# rnassqs returns "value" (lower) or "Value" (upper); after normalize_names it should be "value"
-if ("value" %in% names(cleaned)) {
-  cleaned <- cleaned |>
-    mutate(value_num = suppressWarnings(as.numeric(gsub(",", "", value))))
-}
-
-# --- Helpful subset for monthly county view ---
-# period_desc typically holds the month label (e.g., "JAN", "FEB").
-subset_cols <- intersect(
-  c("commodity_desc", "state_name", "county_name", "year", "period_desc", "unit_desc", "value", "value_num"),
-  names(cleaned)
-)
-
-monthly_preview <- cleaned |>
-  select(all_of(subset_cols)) |>
-  arrange(state_name, county_name, year, period_desc)
-
-# Show a few rows
-print(utils::head(monthly_preview, 20))
-
-# --- Optional: remove exact duplicates ---
-cleaned_distinct <- cleaned |> distinct()
-
-# --- Optional sanity checks ---
-stopifnot(is.data.frame(cleaned), nrow(cleaned) >= 0)
-if ("value_num" %in% names(cleaned)) {
-  summary(cleaned$value_num)
-} else {
-  message("Note: 'value' column exists, but could not create 'value_num' (missing 'value' post-normalization).")
-}
 
 ```
