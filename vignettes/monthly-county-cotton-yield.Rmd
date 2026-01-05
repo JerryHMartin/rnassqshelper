@@ -15,14 +15,17 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-library(rnassqs_helper)
+
+# --- Setup ---
+library(rnassqshelper)
 library(rnassqs)
 library(dplyr)
 library(tidyr)
 library(purrr)
 library(tibble)
+library(stringr)
 
-
+# States to query
 cotton_states <- c(
   "CALIFORNIA", "ARIZONA", "NEW MEXICO", "OKLAHOMA", "TEXAS",
   "KANSAS", "LOUISIANA", "MISSOURI", "ARKANSAS", "MISSISSIPPI",
@@ -30,28 +33,97 @@ cotton_states <- c(
   "VIRGINIA", "SOUTH CAROLINA"
 )
 
-params <- list(
-  source_desc = "SURVEY",
-  sector_desc = "CROPS",
-  group_desc = "FIELD CROPS",
-  commodity_desc = "COTTON",
-  statisticcat_desc = "YIELD",
-  agg_level_desc = "COUNTY",
-  freq_desc = "MONTHLY",
-  year = 1970:2025,
-  state_name = cotton_states
+# --- Auth: get/set NASS key ---
+api_key <- tryCatch(
+  rnassqshelper:::get_nass_key(),
+  error = function(e) Sys.getenv("NASS_API_KEY", "")
+)
+if (!nzchar(api_key)) stop("No NASS_API_KEY found. Add it to .Renviron or use rnassqshelper:::get_nass_key().")
+rnassqs::nassqs_auth(key = api_key)
+
+# --- Helper: robust single query ---
+fetch_one <- function(state, year) {
+  params <- list(
+    source_desc       = "SURVEY",
+    sector_desc       = "CROPS",
+    group_desc        = "FIELD CROPS",
+    commodity_desc    = "COTTON",
+    statisticcat_desc = "YIELD",
+    agg_level_desc    = "COUNTY",
+    freq_desc         = "MONTHLY",
+    state_name        = state,
+    year              = year
+  )
+  # Make call safely; return empty tibble on failure/empty
+  out <- tryCatch(
+    rnassqs::nassqs(params),
+    error = function(e) tibble()
+  )
+  # If we got rows, attach state/year columns if missing
+  if (nrow(out) > 0) {
+    if (!"state_name" %in% names(out)) out$state_name <- state
+    if (!"year" %in% names(out))       out$year <- year
+  }
+  # Be gentle with the API (adjust as needed)
+  Sys.sleep(0.25)
+  out
+}
+
+# --- Build grid and fetch ---
+years <- 1970:2025
+query_grid <- tidyr::expand_grid(state = cotton_states, year = years)
+
+raw_data <- purrr::pmap_dfr(
+  query_grid,
+  function(state, year) fetch_one(state, year)
 )
 
-raw_data <- rnassqs::nassqs(params)
+# Quick peek
+message("Total rows fetched: ", nrow(raw_data))
+print(utils::head(raw_data))
 
-head(raw_data)
+# --- Normalize names and clean text ---
+normalize_names <- function(df) {
+  nms <- tolower(names(df))
+  nms <- gsub("[^a-z0-9]+", "_", nms)   # spaces/slashes -> underscore
+  names(df) <- nms
+  df
+}
 
 cleaned <- raw_data |>
-  dplyr::mutate(across(where(is.character), trimws))
+  normalize_names() |>
+  mutate(across(where(is.character), ~trimws(.x)))
 
-head(cleaned)
+# --- Create numeric value (if present) ---
+# rnassqs returns "value" (lower) or "Value" (upper); after normalize_names it should be "value"
+if ("value" %in% names(cleaned)) {
+  cleaned <- cleaned |>
+    mutate(value_num = suppressWarnings(as.numeric(gsub(",", "", value))))
+}
+
+# --- Helpful subset for monthly county view ---
+# period_desc typically holds the month label (e.g., "JAN", "FEB").
+subset_cols <- intersect(
+  c("commodity_desc", "state_name", "county_name", "year", "period_desc", "unit_desc", "value", "value_num"),
+  names(cleaned)
+)
+
+monthly_preview <- cleaned |>
+  select(all_of(subset_cols)) |>
+  arrange(state_name, county_name, year, period_desc)
+
+# Show a few rows
+print(utils::head(monthly_preview, 20))
+
+# --- Optional: remove exact duplicates ---
+cleaned_distinct <- cleaned |> distinct()
+
+# --- Optional sanity checks ---
+stopifnot(is.data.frame(cleaned), nrow(cleaned) >= 0)
+if ("value_num" %in% names(cleaned)) {
+  summary(cleaned$value_num)
+} else {
+  message("Note: 'value' column exists, but could not create 'value_num' (missing 'value' post-normalization).")
+}
 
 ```
-
-
-
