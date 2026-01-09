@@ -18,6 +18,10 @@ get_nass_yield(
   add_missing_cols = TRUE,
   sleep = 0.25,
   as_tibble = TRUE,
+  progress = TRUE,
+  verbose = FALSE,
+  use_progressr = FALSE,
+  rnassqs_progress_bar = FALSE,
   ...
 )
 }
@@ -57,6 +61,18 @@ the API. Set to \code{0} to disable. Default \code{0.25}.}
 \item{as_tibble}{Logical; if \code{TRUE} (default), return a tibble; if \code{FALSE},
 return a base \code{data.frame}.}
 
+\item{progress}{Logical; if \code{TRUE}, display one cumulative progress bar
+for all queries. Default \code{TRUE}.}
+
+\item{verbose}{Logical; if \code{TRUE}, print the current state-year being queried
+and a simple ETA. Default \code{FALSE}.}
+
+\item{use_progressr}{Logical; if \code{TRUE}, use the {progressr} framework
+for progress (requires the package). Default \code{FALSE}.}
+
+\item{rnassqs_progress_bar}{Logical; passed to \code{rnassqs::nassqs(progress_bar = ...)}.
+Default \code{FALSE} to suppress rnassqs’ internal bar so only the cumulative bar shows.}
+
 \item{...}{Additional named parameters forwarded to \code{rnassqs::nassqs()}
 (e.g., \code{county_name = "DORCHESTER"}, \code{state_alpha = "SC"},
 \code{data_item = "COTTON, UPLAND - YIELD, MEASURED IN LB / ACRE"}).}
@@ -83,8 +99,15 @@ all results for the cartesian product of inputs.
 \code{county_name}, \code{state_alpha}, \code{domain_desc}, \code{data_item}, etc.
 \item Authentication: either call \code{rnassqs::nassqs_auth(key = "<your key>")}
 once at session start, or provide \code{key} to this function.
-\item To minimize overhead, set \code{as_tibble = FALSE} to return a base
-\code{data.frame}. The default is a tibble for tidyverse-friendly workflows.
+\item Progress:
+\itemize{
+\item By default, shows one cumulative progress bar (\code{progress = TRUE}).
+\item \code{verbose = TRUE} prints the current state-year and a simple ETA.
+\item \code{use_progressr = TRUE} uses the {progressr} ecosystem for richer,
+customizable progress UIs (falls back to base progress bar if unavailable).
+}
+\item \code{rnassqs_progress_bar = FALSE} disables rnassqs’ \emph{internal} per-call bar,
+preventing repeated \verb{100\%} lines during bulk downloads. (See rnassqs docs.)
 }
 }
 \section{Authentication}{
@@ -106,14 +129,18 @@ tx_2010 <- get_nass_yield(state = "TEXAS", year = 2010)
 dat_df <- get_nass_yield(
   state = c("TEXAS", "GEORGIA"),
   year  = 2015:2016,
-  as_tibble = FALSE
+  as_tibble = FALSE,
+  progress  = TRUE,
+  verbose   = TRUE
 )
 
-# Filter to a specific county via `...`
-sc_dorchester_2020 <- get_nass_yield(
-  state = "SOUTH CAROLINA", year = 2020,
-  county_name = "DORCHESTER"
-)
+# With {progressr} (if installed) for richer progress output:
+# progressr::handlers(global = TRUE)  # choose a handler (e.g., cli, rstudio)
+# dat <- get_nass_yield(
+#   state = c("SOUTH CAROLINA", "GEORGIA"),
+#   year  = 2018:2019,
+#   use_progressr = TRUE
+# )
 
 # Supply a key directly (alternative to calling nassqs_auth)
 dat2 <- get_nass_yield(
@@ -124,5 +151,6 @@ dat2 <- get_nass_yield(
 
 }
 \seealso{
-\code{\link[rnassqs:nassqs]{rnassqs::nassqs()}}
+\code{\link[rnassqs:nassqs]{rnassqs::nassqs()}} for the underlying API call and its \code{progress_bar}
+parameter; \code{\link[progressr:progressor]{progressr::progressor()}} for customizable progress reporting.
 }

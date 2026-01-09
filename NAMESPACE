@@ -3,3 +3,5 @@
 export(get_nass_yield)
 importFrom(dplyr,bind_rows)
 importFrom(tibble,tibble)
+importFrom(utils,setTxtProgressBar)
+importFrom(utils,txtProgressBar)

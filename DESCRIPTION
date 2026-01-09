@@ -24,7 +24,9 @@ Imports:
     purrr,
     tibble,
     stringr,
-    rnassqs
+    rnassqs,
+    utils,
+    progressr
 Suggests:
     testthat (>= 3.0.0),
     knitr,
