@@ -18,12 +18,6 @@ knitr::opts_chunk$set(
 
 # --- Setup ---
 library(rnassqshelper)
-library(rnassqs)
-library(dplyr)
-library(tidyr)
-library(purrr)
-library(tibble)
-library(stringr)
 
 # States to query
 cotton_states <- c(
@@ -33,16 +27,23 @@ cotton_states <- c(
   "VIRGINIA", "SOUTH CAROLINA"
 )
 
+# # --- Auth: get/set NASS key ---
+# api_key <- tryCatch(
+#   rnassqshelper:::get_nass_key(),
+#   error = function(e) Sys.getenv("NASS_API_KEY", "")
+# )
+# if (!nzchar(api_key)) stop("No NASS_API_KEY found. Add it to .Renviron or use rnassqshelper:::get_nass_key().")
+# rnassqs::nassqs_auth(key = api_key)
+
+
 # --- Auth: get/set NASS key ---
-api_key <- tryCatch(
-  rnassqshelper:::get_nass_key(),
-  error = function(e) Sys.getenv("NASS_API_KEY", "")
-)
-if (!nzchar(api_key)) stop("No NASS_API_KEY found. Add it to .Renviron or use rnassqshelper:::get_nass_key().")
-rnassqs::nassqs_auth(key = api_key)
+api_key <- rnassqshelper::ensure_nass_key(persist = "session")
+
+
 
 # --- Build grid and fetch using the new wrapper ---
-years <- 1970:2025
+#years <- 1970:2025
+years <- 2025
 
 # Directly call get_nass_yield() with vectors of states and years.
 # This returns a single tibble (by default) with all results.
@@ -73,6 +74,60 @@ normalize_names <- function(df) {
 cleaned <- raw_data |>
   normalize_names() |>
   dplyr::mutate(across(where(is.character), ~ trimws(.x)))
+
+
+
+library(dplyr)
+library(openxlsx)
+
+# Create workbook
+wb <- createWorkbook()
+
+# Ensure we have a 'state' column to split by (adjust if your column is named differently)
+if (!"state" %in% names(cleaned)) {
+  stop("The 'cleaned' dataset must include a 'state' column to build per-state sheets.")
+}
+
+# Excel's per-sheet row limit
+excel_limit <- 1048576L
+
+# Simple header style
+hdr_style <- createStyle(textDecoration = "bold", fgFill = "#EFEFEF", halign = "left")
+
+# Split and add each state as a worksheet
+by_state <- split(cleaned, cleaned$state)
+
+for (st in names(by_state)) {
+  df <- by_state[[st]]
+
+  # Excel sheet names must be <= 31 chars and avoid: []:*?/\
+  safe_name <- gsub("[\\[\\]\\:\\*\\?\\/\\\\]", "-", st)
+  safe_name <- substr(safe_name, 1, 31)
+
+  addWorksheet(wb, sheetName = safe_name)
+
+  # If the state's data exceeds Excel's row limit, write the first chunk and warn
+  if (nrow(df) > excel_limit) {
+    warning(sprintf("State '%s' has %s rows; truncating to %s for Excel. Consider splitting.",
+                    st, nrow(df), excel_limit))
+    df <- df[seq_len(excel_limit), , drop = FALSE]
+  }
+
+  writeData(wb, sheet = safe_name, x = df, withFilter = TRUE, headerStyle = hdr_style)
+  freezePane(wb, sheet = safe_name, firstRow = TRUE)
+
+  # Auto column widths (cap the maximum width so Excel stays readable)
+  col_widths <- pmin(30, sapply(df, function(col) max(nchar(as.character(col)), na.rm = TRUE)))
+  setColWidths(wb, sheet = safe_name, cols = seq_along(col_widths), widths = col_widths)
+}
+
+# Build a timestamped filename
+ts <- format(Sys.time(), "%Y%m%d_%H%M%S")
+xlsx_file <- sprintf("cotton_yield_by_state_%s.xlsx", ts)
+
+saveWorkbook(wb, file = xlsx_file, overwrite = TRUE)
+
+message("Saved per-state workbook to: ", normalizePath(xlsx_file))
 
 
 ```
